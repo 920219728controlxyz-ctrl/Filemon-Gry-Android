@@ -779,7 +779,7 @@ class MainActivity : Activity() {
     }
 }
 
-private class CatArcadeView(
+class CatArcadeView(
     context: Context,
     private val mode: GameMode,
     initialSpeed: Int,

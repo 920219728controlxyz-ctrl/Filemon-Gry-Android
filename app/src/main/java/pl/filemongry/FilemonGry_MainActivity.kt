@@ -29,7 +29,7 @@ import kotlin.math.min
 import kotlin.math.sin
 import kotlin.random.Random
 
-private enum class GameMode(
+enum class GameMode(
     val id: String,
     val title: String,
     val icon: String,
@@ -92,7 +92,7 @@ private enum class GameMode(
     )
 }
 
-private data class MovingTarget(
+data class MovingTarget(
     var x: Float,
     var y: Float,
     var vx: Float,

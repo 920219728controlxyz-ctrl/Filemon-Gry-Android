@@ -1,4 +1,3 @@
-
 package pl.filemongry
 
 import android.app.Activity
@@ -6,7 +5,6 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
-import android.graphics.RectF
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
@@ -45,167 +43,131 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         window.statusBarColor = Color.rgb(19, 28, 38)
         window.navigationBarColor = Color.rgb(19, 28, 38)
-
         speed = prefs.getInt("speed", 5).coerceIn(1, 10)
         buildInterface()
     }
 
     private fun buildInterface() {
         val wide = resources.configuration.screenWidthDp >= 700
-        val backgroundColor = Color.rgb(19, 28, 38)
-        val panelColor = Color.rgb(30, 42, 55)
-        val accentColor = Color.rgb(91, 210, 165)
-        val mutedColor = Color.rgb(180, 194, 207)
+        val bg = Color.rgb(19, 28, 38)
+        val panel = Color.rgb(30, 42, 55)
+        val accent = Color.rgb(91, 210, 165)
+        val muted = Color.rgb(180, 194, 207)
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(backgroundColor)
-            setPadding(
-                dp(if (wide) 28 else 16),
-                dp(12),
-                dp(if (wide) 28 else 16),
-                dp(12)
-            )
+            setBackgroundColor(bg)
+            setPadding(dp(16), dp(8), dp(16), dp(12))
         }
 
         val header = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            setPadding(dp(8), dp(8), dp(8), dp(18))
+            setPadding(dp(4), dp(4), dp(4), dp(12))
         }
 
-        header.addView(TextView(this).apply {
-            text = "FILEMON GRY"
-            textSize = if (wide) 34f else 28f
-            setTextColor(accentColor)
-            typeface = Typeface.create(
-                "sans-serif-black",
-                Typeface.BOLD
-            )
-            gravity = Gravity.CENTER
-            letterSpacing = 0.08f
+        header.addView(label(
+            "FILEMON GRY", accent, if (wide) 32f else 27f
+        ).apply {
+            letterSpacing = 0.06f
         })
 
-        header.addView(TextView(this).apply {
-            text = "Zabawa dla ciekawskiego kota"
-            textSize = if (wide) 18f else 15f
-            setTextColor(mutedColor)
-            gravity = Gravity.CENTER
-            setPadding(0, dp(5), 0, 0)
-        })
+        header.addView(label(
+            "Zabawa dla ciekawskiego kota", muted, 15f
+        ))
 
         root.addView(header)
 
         val content = LinearLayout(this).apply {
-            orientation = if (wide) {
-                LinearLayout.HORIZONTAL
-            } else {
-                LinearLayout.VERTICAL
-            }
-            gravity = Gravity.CENTER
+            orientation = if (wide) LinearLayout.HORIZONTAL
+                else LinearLayout.VERTICAL
+            gravity = Gravity.TOP
         }
 
         val gameColumn = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
         }
 
-        val scoreCard = LinearLayout(this).apply {
+        val scores = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
-            setPadding(dp(10), dp(14), dp(10), dp(14))
-            background = rounded(panelColor, 18)
+            setPadding(dp(8), dp(10), dp(8), dp(10))
+            background = rounded(panel, 16)
         }
 
-        scoreText = makeLabel(
-            "PUNKTY\n0", accentColor, if (wide) 24f else 21f
-        )
-
-        bestText = makeLabel(
+        scoreText = label("PUNKTY\n0", accent, 21f)
+        bestText = label(
             "REKORD\n${prefs.getInt("best", 0)}",
             Color.WHITE,
-            if (wide) 21f else 18f
+            19f
         )
 
-        scoreCard.addView(
-            scoreText,
-            LinearLayout.LayoutParams(0, -2, 1f)
-        )
-        scoreCard.addView(
-            bestText,
-            LinearLayout.LayoutParams(0, -2, 1f)
-        )
+        scores.addView(scoreText, LinearLayout.LayoutParams(0, -2, 1f))
+        scores.addView(bestText, LinearLayout.LayoutParams(0, -2, 1f))
 
         gameColumn.addView(
-            scoreCard,
+            scores,
             LinearLayout.LayoutParams(-1, -2).apply {
-                bottomMargin = dp(14)
+                bottomMargin = dp(10)
             }
         )
 
-        game = CatGameView(this) { score ->
+        game = CatGameView(this) { points ->
             runOnUiThread {
-                scoreText.text = "PUNKTY\n$score"
-
-                val best = prefs.getInt("best", 0)
-                if (score > best) {
-                    prefs.edit().putInt("best", score).apply()
-                    bestText.text = "REKORD\n$score"
+                scoreText.text = "PUNKTY\n$points"
+                val record = prefs.getInt("best", 0)
+                if (points > record) {
+                    prefs.edit().putInt("best", points).apply()
+                    bestText.text = "REKORD\n$points"
                 }
             }
         }
 
-        val gameHeight = if (wide) dp(480) else dp(330)
+        game.background = rounded(Color.rgb(235, 242, 235), 18)
 
         gameColumn.addView(
             game,
-            LinearLayout.LayoutParams(-1, gameHeight)
+            LinearLayout.LayoutParams(
+                -1,
+                dp(if (wide) 480 else 300)
+            )
         )
 
-        content.addView(
-            gameColumn,
-            LinearLayout.LayoutParams(
-                0,
-                -2,
-                if (wide) 1.5f else 1f
-            ).apply {
-                if (wide) rightMargin = dp(22)
+        val gameParams = if (wide) {
+            LinearLayout.LayoutParams(0, -2, 1.5f).apply {
+                rightMargin = dp(18)
             }
-        )
+        } else {
+            LinearLayout.LayoutParams(-1, -2)
+        }
+        content.addView(gameColumn, gameParams)
 
         val controls = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(16), dp(16), dp(16))
-            background = rounded(panelColor, 18)
+            setPadding(dp(14), dp(14), dp(14), dp(14))
+            background = rounded(panel, 18)
         }
 
-        controls.addView(
-            makeLabel("STEROWANIE", Color.WHITE, 19f, Gravity.START)
-        )
+        controls.addView(label("STEROWANIE", Color.WHITE, 19f, Gravity.START))
 
         controls.addView(TextView(this).apply {
             text = "Dotknij myszki, aby zdobyć punkt."
-            textSize = 15f
-            setTextColor(mutedColor)
-            setPadding(0, dp(8), 0, dp(14))
+            textSize = 14f
+            setTextColor(muted)
+            setPadding(0, dp(6), 0, dp(10))
         })
 
-        startButton = makeButton("START", accentColor)
+        startButton = button("START", accent)
         startButton.setOnClickListener {
             game.startGame()
             startButton.text = "GRA W TOKU"
+            pauseButton.text = "PAUZA"
         }
-
         controls.addView(startButton, buttonParams())
 
-        pauseButton = makeButton(
-            "PAUZA",
-            Color.rgb(75, 95, 115)
-        )
-
+        pauseButton = button("PAUZA", Color.rgb(75, 95, 115))
         pauseButton.setOnClickListener {
             if (game.isRunning()) {
                 game.pauseGame()
@@ -217,47 +179,28 @@ class MainActivity : Activity() {
                 startButton.text = "GRA W TOKU"
             }
         }
-
         controls.addView(pauseButton, buttonParams())
 
-        val resetButton = makeButton(
-            "ZERUJ PUNKTY",
-            Color.rgb(180, 91, 91)
-        )
-
-        resetButton.setOnClickListener {
+        val reset = button("ZERUJ PUNKTY", Color.rgb(180, 91, 91))
+        reset.setOnClickListener {
             game.resetGame()
             scoreText.text = "PUNKTY\n0"
             startButton.text = "START"
             pauseButton.text = "PAUZA"
         }
-
-        controls.addView(resetButton, buttonParams())
+        controls.addView(reset, buttonParams())
 
         controls.addView(
-            makeLabel(
-                "SZYBKOŚĆ MYSZKI",
-                Color.WHITE,
-                16f,
-                Gravity.START
-            ).apply {
-                setPadding(0, dp(12), 0, dp(2))
-            }
+            label("SZYBKOŚĆ MYSZKI", Color.WHITE, 16f, Gravity.START)
         )
 
-        speedText = makeLabel(
-            "$speed / 10",
-            accentColor,
-            17f,
-            Gravity.START
-        )
+        speedText = label("$speed / 10", accent, 17f, Gravity.START)
         controls.addView(speedText)
 
         controls.addView(SeekBar(this).apply {
             max = 9
             progress = speed - 1
-            contentDescription = "Szybkość ruchu myszki"
-
+            contentDescription = "Szybkość myszki"
             setOnSeekBarChangeListener(
                 object : SeekBar.OnSeekBarChangeListener {
                     override fun onProgressChanged(
@@ -271,13 +214,8 @@ class MainActivity : Activity() {
                         prefs.edit().putInt("speed", speed).apply()
                     }
 
-                    override fun onStartTrackingTouch(
-                        seekBar: SeekBar?
-                    ) = Unit
-
-                    override fun onStopTrackingTouch(
-                        seekBar: SeekBar?
-                    ) = Unit
+                    override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
+                    override fun onStopTrackingTouch(seekBar: SeekBar?) = Unit
                 }
             )
         })
@@ -285,87 +223,64 @@ class MainActivity : Activity() {
         controls.addView(TextView(this).apply {
             text = "Działa lokalnie • Bez reklam • Bez internetu"
             textSize = 12f
-            setTextColor(mutedColor)
-            setPadding(0, dp(12), 0, 0)
+            setTextColor(muted)
+            setPadding(0, dp(8), 0, 0)
         })
 
-        content.addView(
-            controls,
-            LinearLayout.LayoutParams(
-                if (wide) 0 else -1,
-                -2,
-                if (wide) 0.85f else 0f
-            ).apply {
-                if (!wide) topMargin = dp(14)
+        val controlsParams = if (wide) {
+            LinearLayout.LayoutParams(0, -2, 0.85f)
+        } else {
+            LinearLayout.LayoutParams(-1, -2).apply {
+                topMargin = dp(12)
             }
-        )
+        }
+        content.addView(controls, controlsParams)
 
         if (wide) {
-            root.addView(
-                content,
-                LinearLayout.LayoutParams(-1, 0, 1f)
-            )
+            root.addView(content, LinearLayout.LayoutParams(-1, 0, 1f))
         } else {
             val scroll = ScrollView(this).apply {
-                isFillViewport = true
+                isFillViewport = false
                 clipToPadding = false
                 addView(content)
             }
-
-            root.addView(
-                scroll,
-                LinearLayout.LayoutParams(-1, 0, 1f)
-            )
+            root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
         }
 
         setContentView(root)
     }
 
-    private fun makeLabel(
-        value: String,
+    private fun label(
+        textValue: String,
         color: Int,
         size: Float,
         gravityValue: Int = Gravity.CENTER
-    ): TextView {
-        return TextView(this).apply {
-            text = value
-            textSize = size
-            gravity = gravityValue
-            setTextColor(color)
-            typeface = Typeface.create(
-                "sans-serif",
-                Typeface.BOLD
-            )
-            setPadding(dp(4), dp(3), dp(4), dp(3))
-        }
+    ) = TextView(this).apply {
+        text = textValue
+        textSize = size
+        gravity = gravityValue
+        setTextColor(color)
+        typeface = Typeface.create("sans-serif", Typeface.BOLD)
+        setPadding(dp(4), dp(3), dp(4), dp(3))
     }
 
-    private fun makeButton(
-        label: String,
-        color: Int
-    ): Button {
-        return Button(this).apply {
-            text = label
+    private fun button(textValue: String, color: Int) =
+        Button(this).apply {
+            text = textValue
             textSize = 14f
             isAllCaps = false
-            minHeight = dp(52)
-
+            minHeight = dp(50)
             setTextColor(
-                if (color == Color.rgb(91, 210, 165)) {
-                    Color.rgb(19, 28, 38)
-                } else {
-                    Color.WHITE
-                }
+                if (color == Color.rgb(91, 210, 165))
+                    Color.rgb(19, 28, 38) else Color.WHITE
             )
-
             background = rounded(color, 14)
             stateListAnimator = null
         }
-    }
 
     private fun buttonParams() =
         LinearLayout.LayoutParams(-1, -2).apply {
-            bottomMargin = dp(8)
+            bottomMargin = dp(7)
         }
 
     private fun rounded(color: Int, radius: Int) =
@@ -395,21 +310,20 @@ private class CatGameView(
     private val handler = Handler(Looper.getMainLooper())
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
 
-    private var score = 0
+    private var points = 0
     private var speed = 5
     private var running = false
     private var lastMove = 0L
-    private var targetX = 0f
-    private var targetY = 0f
+    private var targetX = -1f
+    private var targetY = -1f
     private var phase = 0f
 
-    private val moveTask = object : Runnable {
+    private val animation = object : Runnable {
         override fun run() {
             if (!running) return
 
             val now = SystemClock.uptimeMillis()
-            val interval =
-                (1150L - speed * 85L).coerceAtLeast(250L)
+            val interval = (1150L - speed * 85L).coerceAtLeast(250L)
 
             if (now - lastMove >= interval) {
                 moveTarget()
@@ -430,27 +344,26 @@ private class CatGameView(
 
     fun startGame() {
         if (width > 0 && height > 0 &&
-            (targetX == 0f || targetY == 0f)
+            (targetX < 0f || targetY < 0f)
         ) {
             moveTarget()
         }
-
         running = true
         lastMove = SystemClock.uptimeMillis()
-        handler.removeCallbacks(moveTask)
-        handler.post(moveTask)
+        handler.removeCallbacks(animation)
+        handler.post(animation)
         invalidate()
     }
 
     fun pauseGame() {
         running = false
-        handler.removeCallbacks(moveTask)
+        handler.removeCallbacks(animation)
         invalidate()
     }
 
     fun resetGame() {
         pauseGame()
-        score = 0
+        points = 0
         onScore(0)
         moveTarget()
         invalidate()
@@ -463,17 +376,14 @@ private class CatGameView(
     private fun moveTarget() {
         if (width <= 0 || height <= 0) return
 
-        val margin = 46f * density
-        val minX = min(margin, width / 2f)
-        val minY = min(margin, height / 2f)
-        val maxX = (width - margin).coerceAtLeast(minX)
-        val maxY = (height - margin).coerceAtLeast(minY)
+        val marginX = min(48f * density, width / 2f)
+        val marginY = min(52f * density, height / 2f)
 
-        targetX = minX + random.nextFloat() *
-            (maxX - minX).coerceAtLeast(1f)
+        targetX = marginX + random.nextFloat() *
+            (width - 2f * marginX).coerceAtLeast(1f)
 
-        targetY = minY + random.nextFloat() *
-            (maxY - minY).coerceAtLeast(1f)
+        targetY = marginY + random.nextFloat() *
+            (height - 2f * marginY).coerceAtLeast(1f)
 
         invalidate()
     }
@@ -497,27 +407,24 @@ private class CatGameView(
 
         paint.style = Paint.Style.FILL
         paint.color = Color.rgb(235, 242, 235)
-
         canvas.drawRoundRect(
             0f, 0f, w, h,
-            22f * density, 22f * density, paint
+            18f * density, 18f * density, paint
         )
 
         paint.color = Color.rgb(220, 231, 218)
-
         val step = 34f * density
-        var x = 0f
-
-        while (x < w) {
-            var y = 0f
-            while (y < h) {
-                canvas.drawCircle(x, y, 1.5f * density, paint)
-                y += step
+        var gx = 0f
+        while (gx < w) {
+            var gy = 0f
+            while (gy < h) {
+                canvas.drawCircle(gx, gy, 1.5f * density, paint)
+                gy += step
             }
-            x += step
+            gx += step
         }
 
-        if (targetX == 0f || targetY == 0f) {
+        if (targetX < 0f || targetY < 0f) {
             targetX = w / 2f
             targetY = h / 2f
         }
@@ -526,16 +433,14 @@ private class CatGameView(
 
         paint.color = Color.rgb(49, 69, 54)
         paint.textSize = 13f * density
-        paint.typeface = Typeface.create(
-            "sans-serif-medium",
-            Typeface.NORMAL
-        )
         paint.textAlign = Paint.Align.CENTER
-
+        paint.typeface = Typeface.create(
+            "sans-serif-medium", Typeface.NORMAL
+        )
         canvas.drawText(
             if (running) "ZŁAP MYSZKĘ!" else "NACIŚNIJ START",
             w / 2f,
-            h - 18f * density,
+            h - 16f * density,
             paint
         )
     }
@@ -543,77 +448,46 @@ private class CatGameView(
     private fun drawMouse(canvas: Canvas, x: Float, y: Float) {
         val scale = min(width, height).toFloat().coerceAtLeast(1f)
         val r = (scale * 0.075f).coerceIn(
-            25f * density,
-            43f * density
+            25f * density, 43f * density
         )
 
-        val bob = if (running) {
-            sin(phase) * 3f * density
-        } else {
-            0f
-        }
-
+        val bob = if (running) sin(phase) * 3f * density else 0f
         val cx = x
         val cy = y + bob
 
         paint.style = Paint.Style.FILL
-        paint.color = Color.argb(45, 0, 0, 0)
-
+        paint.color = Color.argb(40, 0, 0, 0)
         canvas.drawOval(
-            cx - r * 0.85f,
-            cy + r * 0.72f,
-            cx + r * 0.85f,
-            cy + r,
-            paint
+            cx - r * 0.85f, cy + r * 0.72f,
+            cx + r * 0.85f, cy + r, paint
         )
 
         paint.color = Color.rgb(151, 161, 171)
-        canvas.drawCircle(
-            cx - r * 0.52f, cy - r * 0.57f, r * 0.37f, paint
-        )
-        canvas.drawCircle(
-            cx + r * 0.52f, cy - r * 0.57f, r * 0.37f, paint
-        )
+        canvas.drawCircle(cx - r * 0.52f, cy - r * 0.57f, r * 0.37f, paint)
+        canvas.drawCircle(cx + r * 0.52f, cy - r * 0.57f, r * 0.37f, paint)
 
         paint.color = Color.rgb(238, 155, 169)
-        canvas.drawCircle(
-            cx - r * 0.52f, cy - r * 0.57f, r * 0.21f, paint
-        )
-        canvas.drawCircle(
-            cx + r * 0.52f, cy - r * 0.57f, r * 0.21f, paint
-        )
+        canvas.drawCircle(cx - r * 0.52f, cy - r * 0.57f, r * 0.21f, paint)
+        canvas.drawCircle(cx + r * 0.52f, cy - r * 0.57f, r * 0.21f, paint)
 
         paint.color = Color.rgb(151, 161, 171)
         canvas.drawOval(
-            cx - r,
-            cy - r * 0.55f,
-            cx + r,
-            cy + r * 0.85f,
-            paint
+            cx - r, cy - r * 0.55f,
+            cx + r, cy + r * 0.85f, paint
         )
 
         paint.color = Color.WHITE
-        canvas.drawCircle(
-            cx - r * 0.35f, cy - r * 0.05f, r * 0.18f, paint
-        )
-        canvas.drawCircle(
-            cx + r * 0.35f, cy - r * 0.05f, r * 0.18f, paint
-        )
+        canvas.drawCircle(cx - r * 0.35f, cy - r * 0.05f, r * 0.18f, paint)
+        canvas.drawCircle(cx + r * 0.35f, cy - r * 0.05f, r * 0.18f, paint)
 
         paint.color = Color.rgb(35, 43, 50)
-        canvas.drawCircle(
-            cx - r * 0.32f, cy - r * 0.03f, r * 0.08f, paint
-        )
-        canvas.drawCircle(
-            cx + r * 0.32f, cy - r * 0.03f, r * 0.08f, paint
-        )
-        canvas.drawCircle(
-            cx, cy + r * 0.20f, r * 0.10f, paint
-        )
+        canvas.drawCircle(cx - r * 0.32f, cy - r * 0.03f, r * 0.08f, paint)
+        canvas.drawCircle(cx + r * 0.32f, cy - r * 0.03f, r * 0.08f, paint)
+        canvas.drawCircle(cx, cy + r * 0.20f, r * 0.10f, paint)
 
-        paint.color = Color.rgb(115, 126, 135)
-        paint.strokeWidth = 2f * density
         paint.style = Paint.Style.STROKE
+        paint.strokeWidth = 2f * density
+        paint.color = Color.rgb(115, 126, 135)
 
         canvas.drawLine(
             cx - r * 0.15f, cy + r * 0.35f,
@@ -626,12 +500,10 @@ private class CatGameView(
 
         paint.color = Color.rgb(224, 115, 129)
         paint.strokeWidth = 4f * density
-
         canvas.drawLine(
             cx + r * 0.75f, cy + r * 0.55f,
             cx + r * 1.15f, cy + r * 0.72f, paint
         )
-
         paint.style = Paint.Style.FILL
     }
 
@@ -648,8 +520,8 @@ private class CatGameView(
         val dy = event.y - targetY
 
         if (dx * dx + dy * dy <= radius * radius) {
-            score++
-            onScore(score)
+            points++
+            onScore(points)
             moveTarget()
             lastMove = SystemClock.uptimeMillis()
         }

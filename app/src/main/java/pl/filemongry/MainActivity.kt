@@ -2,24 +2,27 @@
 package pl.filemongry
 
 import android.app.Activity
-import android.os.Bundle
-import android.content.res.Configuration
+import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.widget.Button
-import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.SeekBar
 import android.widget.TextView
 import kotlin.math.min
+import kotlin.math.sin
 import kotlin.random.Random
 
 class MainActivity : Activity() {
@@ -32,38 +35,40 @@ class MainActivity : Activity() {
     private lateinit var pauseButton: Button
 
     private var speed = 5
+
     private val prefs by lazy {
         getSharedPreferences("filemon_settings", MODE_PRIVATE)
     }
 
     private fun dp(value: Int): Int =
-        (value * resources.displayMetrics.density).toInt()
+        (value * resources.displayMetrics.density + 0.5f).toInt()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         window.statusBarColor = Color.rgb(19, 28, 38)
         window.navigationBarColor = Color.rgb(19, 28, 38)
-        window.decorView.systemUiVisibility = 0
 
         speed = prefs.getInt("speed", 5).coerceIn(1, 10)
-
         buildInterface()
     }
 
     private fun buildInterface() {
         val wide = resources.configuration.screenWidthDp >= 700
-
-        val background = Color.rgb(19, 28, 38)
-        val panel = Color.rgb(30, 42, 55)
-        val accent = Color.rgb(91, 210, 165)
-        val muted = Color.rgb(180, 194, 207)
+        val backgroundColor = Color.rgb(19, 28, 38)
+        val panelColor = Color.rgb(30, 42, 55)
+        val accentColor = Color.rgb(91, 210, 165)
+        val mutedColor = Color.rgb(180, 194, 207)
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(background)
-            setPadding(dp(if (wide) 28 else 16), dp(12),
-                dp(if (wide) 28 else 16), dp(12))
+            setBackgroundColor(backgroundColor)
+            setPadding(
+                dp(if (wide) 28 else 16),
+                dp(12),
+                dp(if (wide) 28 else 16),
+                dp(12)
+            )
         }
 
         val header = LinearLayout(this).apply {
@@ -75,8 +80,11 @@ class MainActivity : Activity() {
         header.addView(TextView(this).apply {
             text = "FILEMON GRY"
             textSize = if (wide) 34f else 28f
-            setTextColor(accent)
-            typeface = Typeface.create("sans-serif-black", Typeface.BOLD)
+            setTextColor(accentColor)
+            typeface = Typeface.create(
+                "sans-serif-black",
+                Typeface.BOLD
+            )
             gravity = Gravity.CENTER
             letterSpacing = 0.08f
         })
@@ -84,7 +92,7 @@ class MainActivity : Activity() {
         header.addView(TextView(this).apply {
             text = "Zabawa dla ciekawskiego kota"
             textSize = if (wide) 18f else 15f
-            setTextColor(muted)
+            setTextColor(mutedColor)
             gravity = Gravity.CENTER
             setPadding(0, dp(5), 0, 0)
         })
@@ -92,8 +100,11 @@ class MainActivity : Activity() {
         root.addView(header)
 
         val content = LinearLayout(this).apply {
-            orientation = if (wide) LinearLayout.HORIZONTAL
-                else LinearLayout.VERTICAL
+            orientation = if (wide) {
+                LinearLayout.HORIZONTAL
+            } else {
+                LinearLayout.VERTICAL
+            }
             gravity = Gravity.CENTER
         }
 
@@ -106,18 +117,27 @@ class MainActivity : Activity() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
             setPadding(dp(10), dp(14), dp(10), dp(14))
-            background = rounded(panel, 18)
+            background = rounded(panelColor, 18)
         }
 
-        scoreText = makeLabel("PUNKTY\n0", accent, if (wide) 24f else 21f)
+        scoreText = makeLabel(
+            "PUNKTY\n0", accentColor, if (wide) 24f else 21f
+        )
+
         bestText = makeLabel(
             "REKORD\n${prefs.getInt("best", 0)}",
             Color.WHITE,
             if (wide) 21f else 18f
         )
 
-        scoreCard.addView(scoreText, LinearLayout.LayoutParams(0, -2, 1f))
-        scoreCard.addView(bestText, LinearLayout.LayoutParams(0, -2, 1f))
+        scoreCard.addView(
+            scoreText,
+            LinearLayout.LayoutParams(0, -2, 1f)
+        )
+        scoreCard.addView(
+            bestText,
+            LinearLayout.LayoutParams(0, -2, 1f)
+        )
 
         gameColumn.addView(
             scoreCard,
@@ -138,15 +158,11 @@ class MainActivity : Activity() {
             }
         }
 
-        game.background = rounded(Color.rgb(235, 242, 235), 22)
-
         val gameHeight = if (wide) dp(480) else dp(330)
+
         gameColumn.addView(
             game,
-            LinearLayout.LayoutParams(
-                -1,
-                gameHeight
-            )
+            LinearLayout.LayoutParams(-1, gameHeight)
         )
 
         content.addView(
@@ -163,35 +179,33 @@ class MainActivity : Activity() {
         val controls = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(16), dp(16), dp(16), dp(16))
-            background = rounded(panel, 18)
+            background = rounded(panelColor, 18)
         }
 
-        controls.addView(makeLabel(
-            "STEROWANIE",
-            Color.WHITE,
-            19f,
-            Gravity.START
-        ))
+        controls.addView(
+            makeLabel("STEROWANIE", Color.WHITE, 19f, Gravity.START)
+        )
 
         controls.addView(TextView(this).apply {
             text = "Dotknij myszki, aby zdobyć punkt."
             textSize = 15f
-            setTextColor(muted)
+            setTextColor(mutedColor)
             setPadding(0, dp(8), 0, dp(14))
         })
 
-        startButton = makeButton("START", accent)
+        startButton = makeButton("START", accentColor)
         startButton.setOnClickListener {
             game.startGame()
             startButton.text = "GRA W TOKU"
         }
 
-        controls.addView(
-            startButton,
-            buttonParams()
+        controls.addView(startButton, buttonParams())
+
+        pauseButton = makeButton(
+            "PAUZA",
+            Color.rgb(75, 95, 115)
         )
 
-        pauseButton = makeButton("PAUZA", Color.rgb(75, 95, 115))
         pauseButton.setOnClickListener {
             if (game.isRunning()) {
                 game.pauseGame()
@@ -204,15 +218,13 @@ class MainActivity : Activity() {
             }
         }
 
-        controls.addView(
-            pauseButton,
-            buttonParams()
-        )
+        controls.addView(pauseButton, buttonParams())
 
         val resetButton = makeButton(
             "ZERUJ PUNKTY",
             Color.rgb(180, 91, 91)
         )
+
         resetButton.setOnClickListener {
             game.resetGame()
             scoreText.text = "PUNKTY\n0"
@@ -220,27 +232,25 @@ class MainActivity : Activity() {
             pauseButton.text = "PAUZA"
         }
 
-        controls.addView(
-            resetButton,
-            buttonParams()
-        )
+        controls.addView(resetButton, buttonParams())
 
-        controls.addView(makeLabel(
-            "SZYBKOŚĆ MYSZKI",
-            Color.WHITE,
-            16f,
-            Gravity.START
-        ).apply {
-            setPadding(0, dp(12), 0, dp(2))
-        })
+        controls.addView(
+            makeLabel(
+                "SZYBKOŚĆ MYSZKI",
+                Color.WHITE,
+                16f,
+                Gravity.START
+            ).apply {
+                setPadding(0, dp(12), 0, dp(2))
+            }
+        )
 
         speedText = makeLabel(
             "$speed / 10",
-            accent,
+            accentColor,
             17f,
             Gravity.START
         )
-
         controls.addView(speedText)
 
         controls.addView(SeekBar(this).apply {
@@ -263,11 +273,11 @@ class MainActivity : Activity() {
 
                     override fun onStartTrackingTouch(
                         seekBar: SeekBar?
-                    ) {}
+                    ) = Unit
 
                     override fun onStopTrackingTouch(
                         seekBar: SeekBar?
-                    ) {}
+                    ) = Unit
                 }
             )
         })
@@ -275,7 +285,7 @@ class MainActivity : Activity() {
         controls.addView(TextView(this).apply {
             text = "Działa lokalnie • Bez reklam • Bez internetu"
             textSize = 12f
-            setTextColor(muted)
+            setTextColor(mutedColor)
             setPadding(0, dp(12), 0, 0)
         })
 
@@ -339,11 +349,15 @@ class MainActivity : Activity() {
             textSize = 14f
             isAllCaps = false
             minHeight = dp(52)
+
             setTextColor(
-                if (color == Color.rgb(91, 210, 165))
+                if (color == Color.rgb(91, 210, 165)) {
                     Color.rgb(19, 28, 38)
-                else Color.WHITE
+                } else {
+                    Color.WHITE
+                }
             )
+
             background = rounded(color, 14)
             stateListAnimator = null
         }
@@ -361,8 +375,8 @@ class MainActivity : Activity() {
         }
 
     override fun onPause() {
-        super.onPause()
         if (::game.isInitialized) game.pauseGame()
+        super.onPause()
     }
 
     override fun onDestroy() {
@@ -372,18 +386,14 @@ class MainActivity : Activity() {
 }
 
 private class CatGameView(
-    context: android.content.Context,
+    context: Context,
     private val onScore: (Int) -> Unit
 ) : View(context) {
 
     private val density = resources.displayMetrics.density
     private val random = Random.Default
-    private val handler = android.os.Handler(
-        android.os.Looper.getMainLooper()
-    )
-
+    private val handler = Handler(Looper.getMainLooper())
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val target = RectF()
 
     private var score = 0
     private var speed = 5
@@ -396,8 +406,10 @@ private class CatGameView(
     private val moveTask = object : Runnable {
         override fun run() {
             if (!running) return
-            val now = android.os.SystemClock.uptimeMillis()
-            val interval = (1150L - speed * 85L).coerceAtLeast(250L)
+
+            val now = SystemClock.uptimeMillis()
+            val interval =
+                (1150L - speed * 85L).coerceAtLeast(250L)
 
             if (now - lastMove >= interval) {
                 moveTarget()
@@ -417,11 +429,14 @@ private class CatGameView(
     }
 
     fun startGame() {
-        if (width > 0 && height > 0 && targetX == 0f) {
+        if (width > 0 && height > 0 &&
+            (targetX == 0f || targetY == 0f)
+        ) {
             moveTarget()
         }
+
         running = true
-        lastMove = android.os.SystemClock.uptimeMillis()
+        lastMove = SystemClock.uptimeMillis()
         handler.removeCallbacks(moveTask)
         handler.post(moveTask)
         invalidate()
@@ -446,14 +461,19 @@ private class CatGameView(
     }
 
     private fun moveTarget() {
-        val margin = 46f * density
-        val maxX = (width - margin).coerceAtLeast(margin)
-        val maxY = (height - margin).coerceAtLeast(margin)
+        if (width <= 0 || height <= 0) return
 
-        targetX = margin + random.nextFloat() *
-            (maxX - margin).coerceAtLeast(1f)
-        targetY = margin + random.nextFloat() *
-            (maxY - margin).coerceAtLeast(1f)
+        val margin = 46f * density
+        val minX = min(margin, width / 2f)
+        val minY = min(margin, height / 2f)
+        val maxX = (width - margin).coerceAtLeast(minX)
+        val maxY = (height - margin).coerceAtLeast(minY)
+
+        targetX = minX + random.nextFloat() *
+            (maxX - minX).coerceAtLeast(1f)
+
+        targetY = minY + random.nextFloat() *
+            (maxY - minY).coerceAtLeast(1f)
 
         invalidate()
     }
@@ -475,14 +495,19 @@ private class CatGameView(
         val h = height.toFloat()
         if (w <= 0f || h <= 0f) return
 
+        paint.style = Paint.Style.FILL
         paint.color = Color.rgb(235, 242, 235)
+
         canvas.drawRoundRect(
-            0f, 0f, w, h, 22f * density, 22f * density, paint
+            0f, 0f, w, h,
+            22f * density, 22f * density, paint
         )
 
         paint.color = Color.rgb(220, 231, 218)
+
         val step = 34f * density
         var x = 0f
+
         while (x < w) {
             var y = 0f
             while (y < h) {
@@ -522,28 +547,41 @@ private class CatGameView(
             43f * density
         )
 
-        val bob = if (running) kotlin.math.sin(phase) *
-            3f * density else 0f
+        val bob = if (running) {
+            sin(phase) * 3f * density
+        } else {
+            0f
+        }
 
         val cx = x
         val cy = y + bob
 
+        paint.style = Paint.Style.FILL
         paint.color = Color.argb(45, 0, 0, 0)
+
         canvas.drawOval(
             cx - r * 0.85f,
             cy + r * 0.72f,
             cx + r * 0.85f,
-            cy + r * 1.0f,
+            cy + r,
             paint
         )
 
         paint.color = Color.rgb(151, 161, 171)
-        canvas.drawCircle(cx - r * 0.52f, cy - r * 0.57f, r * 0.37f, paint)
-        canvas.drawCircle(cx + r * 0.52f, cy - r * 0.57f, r * 0.37f, paint)
+        canvas.drawCircle(
+            cx - r * 0.52f, cy - r * 0.57f, r * 0.37f, paint
+        )
+        canvas.drawCircle(
+            cx + r * 0.52f, cy - r * 0.57f, r * 0.37f, paint
+        )
 
         paint.color = Color.rgb(238, 155, 169)
-        canvas.drawCircle(cx - r * 0.52f, cy - r * 0.57f, r * 0.21f, paint)
-        canvas.drawCircle(cx + r * 0.52f, cy - r * 0.57f, r * 0.21f, paint)
+        canvas.drawCircle(
+            cx - r * 0.52f, cy - r * 0.57f, r * 0.21f, paint
+        )
+        canvas.drawCircle(
+            cx + r * 0.52f, cy - r * 0.57f, r * 0.21f, paint
+        )
 
         paint.color = Color.rgb(151, 161, 171)
         canvas.drawOval(
@@ -555,17 +593,28 @@ private class CatGameView(
         )
 
         paint.color = Color.WHITE
-        canvas.drawCircle(cx - r * 0.35f, cy - r * 0.05f, r * 0.18f, paint)
-        canvas.drawCircle(cx + r * 0.35f, cy - r * 0.05f, r * 0.18f, paint)
+        canvas.drawCircle(
+            cx - r * 0.35f, cy - r * 0.05f, r * 0.18f, paint
+        )
+        canvas.drawCircle(
+            cx + r * 0.35f, cy - r * 0.05f, r * 0.18f, paint
+        )
 
         paint.color = Color.rgb(35, 43, 50)
-        canvas.drawCircle(cx - r * 0.32f, cy - r * 0.03f, r * 0.08f, paint)
-        canvas.drawCircle(cx + r * 0.32f, cy - r * 0.03f, r * 0.08f, paint)
-        canvas.drawCircle(cx, cy + r * 0.20f, r * 0.10f, paint)
+        canvas.drawCircle(
+            cx - r * 0.32f, cy - r * 0.03f, r * 0.08f, paint
+        )
+        canvas.drawCircle(
+            cx + r * 0.32f, cy - r * 0.03f, r * 0.08f, paint
+        )
+        canvas.drawCircle(
+            cx, cy + r * 0.20f, r * 0.10f, paint
+        )
 
         paint.color = Color.rgb(115, 126, 135)
         paint.strokeWidth = 2f * density
         paint.style = Paint.Style.STROKE
+
         canvas.drawLine(
             cx - r * 0.15f, cy + r * 0.35f,
             cx - r * 0.70f, cy + r * 0.25f, paint
@@ -574,16 +623,15 @@ private class CatGameView(
             cx + r * 0.15f, cy + r * 0.35f,
             cx + r * 0.70f, cy + r * 0.25f, paint
         )
-        paint.style = Paint.Style.FILL
 
         paint.color = Color.rgb(224, 115, 129)
         paint.strokeWidth = 4f * density
-        paint.style = Paint.Style.STROKE
+
         canvas.drawLine(
             cx + r * 0.75f, cy + r * 0.55f,
-            cx + r * 1.15f, cy + r * 0.72f,
-            paint
+            cx + r * 1.15f, cy + r * 0.72f, paint
         )
+
         paint.style = Paint.Style.FILL
     }
 
@@ -603,7 +651,7 @@ private class CatGameView(
             score++
             onScore(score)
             moveTarget()
-            lastMove = android.os.SystemClock.uptimeMillis()
+            lastMove = SystemClock.uptimeMillis()
         }
 
         performClick()
